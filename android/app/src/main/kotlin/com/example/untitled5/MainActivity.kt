@@ -28,9 +28,11 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "onUserLoggedIn" -> {
-                    Log.d(TAG, "onUserLoggedIn — starting service and scheduling watchdog")
+                    Log.d(TAG, "onUserLoggedIn — starting service, scheduling watchdog, and finalizing yesterday")
                     startTrackerService()
                     scheduleServiceWatchdog()
+                    // NEW: Ensure yesterday is finalized on login
+                    UsageTrackerService.finalizeYesterdayIfNeeded(this@MainActivity)
                     result.success(null)
                 }
                 else -> result.notImplemented()
@@ -41,8 +43,22 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        Log.d(TAG, "MainActivity onCreate")
+
         startTrackerService()
         scheduleServiceWatchdog()
+
+        // NEW: Finalize yesterday if day boundary was crossed
+        // (Important if device was off overnight or service crashed)
+        UsageTrackerService.finalizeYesterdayIfNeeded(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "MainActivity onResume — checking day boundary")
+        // NEW: Re-check on every resume in case enough time has passed
+        // This handles edge case of device sleep across midnight
+        UsageTrackerService.finalizeYesterdayIfNeeded(this)
     }
 
     private fun startTrackerService() {
@@ -57,15 +73,19 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun scheduleServiceWatchdog() {
-        val pi = PendingIntent.getBroadcast(
-            this, 0, Intent(this, ServiceWatchdogReceiver::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        (getSystemService(ALARM_SERVICE) as AlarmManager).setRepeating(
-            AlarmManager.ELAPSED_REALTIME_WAKEUP,
-            SystemClock.elapsedRealtime() + 60_000L,
-            15 * 60 * 1000L, pi
-        )
-        Log.d(TAG, "Service watchdog alarm scheduled")
+        try {
+            val pi = PendingIntent.getBroadcast(
+                this, 0, Intent(this, ServiceWatchdogReceiver::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            (getSystemService(ALARM_SERVICE) as AlarmManager).setRepeating(
+                AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                SystemClock.elapsedRealtime() + 60_000L,
+                15 * 60 * 1000L, pi
+            )
+            Log.d(TAG, "Service watchdog alarm scheduled")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to schedule watchdog: ${e.message}")
+        }
     }
 }

@@ -52,6 +52,7 @@ class _StatCard {
   final IconData icon;
   final Color iconColor;
   final Color iconBg;
+  final Color cardBg;
   final String label;
   final String value;
   final int? currentVal;
@@ -62,6 +63,7 @@ class _StatCard {
     required this.icon,
     required this.iconColor,
     required this.iconBg,
+    required this.cardBg,
     required this.label,
     required this.value,
     this.currentVal,
@@ -71,10 +73,8 @@ class _StatCard {
 }
 
 class _DashboardState extends State<Dashboard> {
-  // Only used on Android
   static const _channel = MethodChannel('com.example.untitled5/usage');
 
-  // Whether we're on Android
   bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
 
   int _currentIndex = 0;
@@ -124,7 +124,6 @@ class _DashboardState extends State<Dashboard> {
       Future.microtask(_loadLocalDaysWithData);
       Future.microtask(_checkFirebaseDaysWithData);
     } else {
-      // On iOS just mark local checks as done
       setState(() {
         _localDaysChecked  = true;
         _localLoaded       = true;
@@ -316,11 +315,19 @@ class _DashboardState extends State<Dashboard> {
     return days[d.weekday - 1];
   }
 
+  String _monthYearLabel(DateTime d) {
+    const months = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
+    return "${months[d.month - 1]} ${d.year}";
+  }
+
   String _fmtMins(int mins) {
     final h = mins ~/ 60;
     final m = mins % 60;
     if (h == 0) return "${m}m";
-    return "${h}:${m.toString().padLeft(2, '0')}";
+    return "${h}h ${m.toString().padLeft(2, '0')}m";
   }
 
   List<AppRow> _parseReport(String report, Map<String, dynamic> iconsMap) {
@@ -396,7 +403,7 @@ class _DashboardState extends State<Dashboard> {
       _appRows           = [];
       _iconsMap          = {};
       _reportLoaded      = false;
-      _localLoaded       = !_isAndroid; // iOS: skip local loading
+      _localLoaded       = !_isAndroid;
       _usingLocalData    = false;
       _focusMinutes      = null;
       _pickups           = null;
@@ -411,7 +418,6 @@ class _DashboardState extends State<Dashboard> {
       _othersExpanded    = false;
     });
 
-    // Only fetch local data on Android
     if (_isAndroid && _permissionGranted) {
       Future.microtask(() => _fetchLocalUsageForDay(day));
     }
@@ -505,9 +511,10 @@ class _DashboardState extends State<Dashboard> {
     final appCount  = _appRows.where((r) => r.durationMs >= 60000).length;
     return [
       _StatCard(
-        icon: Icons.smartphone_rounded,
+        icon: Icons.smartphone_outlined,
         iconColor: const Color(0xFF6C5CE7),
         iconBg: const Color(0xFFEDE9FB),
+        cardBg: const Color(0xFFF5F3FF),
         label: "Screen Time",
         value: totalMins == 0 ? "—" : _fmtMins(totalMins),
         currentVal: totalMins,
@@ -515,9 +522,10 @@ class _DashboardState extends State<Dashboard> {
         deltaIsGoodWhenPositive: false,
       ),
       _StatCard(
-        icon: Icons.apps_rounded,
+        icon: Icons.grid_view_rounded,
         iconColor: const Color(0xFF0984E3),
         iconBg: const Color(0xFFE3F2FF),
+        cardBg: const Color(0xFFF0F7FF),
         label: "App Usage",
         value: appCount == 0 ? "—" : "$appCount Apps",
         currentVal: appCount,
@@ -528,6 +536,7 @@ class _DashboardState extends State<Dashboard> {
         icon: Icons.track_changes_rounded,
         iconColor: const Color(0xFF00B894),
         iconBg: const Color(0xFFDFFAF4),
+        cardBg: const Color(0xFFF0FBF7),
         label: "Focus Time",
         value: _focusMinutes == null ? "—" : _fmtMins(_focusMinutes!),
         currentVal: _focusMinutes,
@@ -535,9 +544,10 @@ class _DashboardState extends State<Dashboard> {
         deltaIsGoodWhenPositive: true,
       ),
       _StatCard(
-        icon: Icons.phone_iphone_rounded,
+        icon: Icons.bedtime_outlined,
         iconColor: const Color(0xFFE17055),
         iconBg: const Color(0xFFFEEDE9),
+        cardBg: const Color(0xFFFFF5F2),
         label: "Pickups",
         value: _pickups == null ? "—" : "${_pickups!} Times",
         currentVal: _pickups,
@@ -796,8 +806,7 @@ class _DashboardState extends State<Dashboard> {
     decoration: BoxDecoration(
       color: const Color(0xFFE3F2FD),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-          color: const Color(0xFF1E88E5).withOpacity(0.4)),
+      border: Border.all(color: const Color(0xFF1E88E5).withOpacity(0.4)),
     ),
     child: const Row(children: [
       SizedBox(
@@ -824,12 +833,10 @@ class _DashboardState extends State<Dashboard> {
     decoration: BoxDecoration(
       color: const Color(0xFFF3E5F5),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-          color: const Color(0xFF9C27B0).withOpacity(0.4)),
+      border: Border.all(color: const Color(0xFF9C27B0).withOpacity(0.4)),
     ),
     child: const Row(children: [
-      Icon(Icons.phone_android_rounded,
-          color: Color(0xFF9C27B0), size: 16),
+      Icon(Icons.phone_android_rounded, color: Color(0xFF9C27B0), size: 16),
       SizedBox(width: 10),
       Expanded(
         child: Text(
@@ -942,14 +949,14 @@ class _DashboardState extends State<Dashboard> {
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => _FullInsightPage(
-                        overused:           overused,
-                        appRows:            _appRows,
-                        iconsMap:           _iconsMap,
-                        totalMins:          _parseTotalMins(),
-                        focusMinutes:       _focusMinutes,
-                        pickups:            _pickups,
-                        screenTimeStatus:   _screenTimeStatus,
-                        sleepImpactStatus:  _sleepImpactStatus,
+                        overused:          overused,
+                        appRows:           _appRows,
+                        iconsMap:          _iconsMap,
+                        totalMins:         _parseTotalMins(),
+                        focusMinutes:      _focusMinutes,
+                        pickups:           _pickups,
+                        screenTimeStatus:  _screenTimeStatus,
+                        sleepImpactStatus: _sleepImpactStatus,
                       ),
                     ),
                   ),
@@ -1050,42 +1057,53 @@ class _DashboardState extends State<Dashboard> {
         style: const TextStyle(color: Colors.grey, fontSize: 13),
       ),
       const SizedBox(height: 16),
-      LayoutBuilder(builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - 24) / 4;
-        return Row(
-          children: cards.asMap().entries.map((entry) => Padding(
-            padding: EdgeInsets.only(
-                right: entry.key < cards.length - 1 ? 8.0 : 0),
-            child: SizedBox(
-                width: cardWidth,
-                child: _statCardTile(entry.value)),
+      IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: cards.asMap().entries.map((entry) => Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                  right: entry.key < cards.length - 1 ? 8.0 : 0),
+              child: _statCardTile(entry.value),
+            ),
           )).toList(),
-        );
-      }),
+        ),
+      ),
     ]);
   }
 
+  // ── Stat card tile — matches screenshot design ────────────────────────────
+
   Widget _statCardTile(_StatCard card) {
-    Widget? deltaChip;
+    Widget? deltaWidget;
+
     if (card.currentVal != null &&
         card.previousVal != null &&
         card.previousVal! > 0) {
       final diff       = card.currentVal! - card.previousVal!;
       final pct        = ((diff / card.previousVal!) * 100).round().abs();
       final isPositive = diff > 0;
-      final isGood =
-      card.deltaIsGoodWhenPositive ? isPositive : !isPositive;
-      final color =
-      isGood ? const Color(0xFF00B894) : const Color(0xFFE17055);
-      deltaChip = Text(
-        "${isPositive ? '↑' : '↓'} $pct%",
+      final isGood     = card.deltaIsGoodWhenPositive ? isPositive : !isPositive;
+      final color      = isGood
+          ? const Color(0xFF00B894)
+          : const Color(0xFFE17055);
+      final arrow      = isPositive ? "↑" : "↓";
+
+      // App Usage shows raw diff, others show percentage
+      final deltaLabel = card.label == "App Usage"
+          ? "$arrow ${diff.abs()} vs yesterday"
+          : "$arrow $pct% vs yesterday";
+
+      deltaWidget = Text(
+        deltaLabel,
         style: TextStyle(
-            color: color, fontSize: 11, fontWeight: FontWeight.w600),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w600),
+        softWrap: true,
       );
     } else if (!_reportLoaded) {
-      deltaChip = Container(
+      deltaWidget = Container(
         height: 9,
         width: 40,
         decoration: BoxDecoration(
@@ -1096,56 +1114,65 @@ class _DashboardState extends State<Dashboard> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          )
-        ],
+        // Tinted pastel background matching screenshot
+        color: card.cardBg,
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: card.iconBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(card.icon, color: card.iconColor, size: 20),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        // max so all cards fill IntrinsicHeight evenly
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          // Icon on white circle
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 10),
-            Text(card.label,
-                style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            Text(
-              !_reportLoaded ? "—" : card.value,
-              style: const TextStyle(
-                color: Color(0xFF1A1A2E),
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Icon(card.icon, color: card.iconColor, size: 22),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Label
+          Text(
+            card.label,
+            style: const TextStyle(
+                color: Colors.black54,
+                fontSize: 11,
+                fontWeight: FontWeight.w500),
+            maxLines: 2,
+            softWrap: true,
+          ),
+
+          const SizedBox(height: 4),
+
+          // Value — large bold
+          Text(
+            !_reportLoaded ? "—" : card.value,
+            style: const TextStyle(
+              color: Color(0xFF1A1A2E),
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
             ),
-            if (deltaChip != null) ...[
-              const SizedBox(height: 5),
-              deltaChip,
-            ],
-          ]),
+            maxLines: 2,
+            softWrap: true,
+          ),
+
+          // Spacer pushes delta to bottom so all cards align
+          const Spacer(),
+
+          // Delta chip
+          if (deltaWidget != null) ...[
+            const SizedBox(height: 6),
+            deltaWidget,
+          ],
+        ],
+      ),
     );
   }
 
@@ -1206,8 +1233,7 @@ class _DashboardState extends State<Dashboard> {
   // ── Report card ───────────────────────────────────────────────────────────
 
   Widget _reportCard() {
-    final mainRows =
-    _appRows.where((r) => r.durationMs >= 60000).toList();
+    final mainRows   = _appRows.where((r) => r.durationMs >= 60000).toList();
     final othersRows = _appRows
         .where((r) => r.durationMs > 0 && r.durationMs < 60000)
         .toList();
@@ -1219,10 +1245,8 @@ class _DashboardState extends State<Dashboard> {
         break;
       }
     }
-    final title =
-        "${widget.userName} — ${_dayLabel(_selectedDay)}'s Usage";
-    final isEmpty =
-        _appRows.isEmpty && _isEmptyReport(_rawReport);
+    final title   = "${widget.userName} — ${_dayLabel(_selectedDay)}'s Usage";
+    final isEmpty = _appRows.isEmpty && _isEmptyReport(_rawReport);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1251,8 +1275,7 @@ class _DashboardState extends State<Dashboard> {
                   _myLastUpdated.length > 19
                       ? _myLastUpdated.substring(0, 19)
                       : _myLastUpdated,
-                  style:
-                  const TextStyle(color: Colors.black, fontSize: 10),
+                  style: const TextStyle(color: Colors.black, fontSize: 10),
                 ),
             ]),
             const Divider(color: Color(0xFFDDDDDD), height: 20),
@@ -1277,8 +1300,7 @@ class _DashboardState extends State<Dashboard> {
                             fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     Padding(
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         _isAndroid
                             ? "The device was either not used or the tracker "
@@ -1321,8 +1343,7 @@ class _DashboardState extends State<Dashboard> {
                 if (total.isNotEmpty) ...[
                   const Divider(color: Color(0xFFDDDDDD), height: 20),
                   Row(
-                      mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text("Total screen time",
                             style: TextStyle(
@@ -1333,8 +1354,7 @@ class _DashboardState extends State<Dashboard> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50)
-                                .withOpacity(0.12),
+                            color: const Color(0xFF4CAF50).withOpacity(0.12),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(total,
@@ -1348,8 +1368,8 @@ class _DashboardState extends State<Dashboard> {
                 if (othersRows.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   GestureDetector(
-                    onTap: () => setState(
-                            () => _othersExpanded = !_othersExpanded),
+                    onTap: () =>
+                        setState(() => _othersExpanded = !_othersExpanded),
                     behavior: HitTestBehavior.opaque,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -1362,8 +1382,7 @@ class _DashboardState extends State<Dashboard> {
                         Container(
                           width: 28, height: 28,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF48249A)
-                                .withOpacity(0.12),
+                            color: const Color(0xFF48249A).withOpacity(0.12),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(Icons.apps_rounded,
@@ -1394,13 +1413,11 @@ class _DashboardState extends State<Dashboard> {
                   if (_othersExpanded) ...[
                     const SizedBox(height: 6),
                     Container(
-                      constraints:
-                      const BoxConstraints(maxHeight: 260),
+                      constraints: const BoxConstraints(maxHeight: 260),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: const Color(0xFFDDD8F0)),
+                        border: Border.all(color: const Color(0xFFDDD8F0)),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
@@ -1411,8 +1428,7 @@ class _DashboardState extends State<Dashboard> {
                           itemCount: othersRows.length,
                           separatorBuilder: (_, __) => const Divider(
                               color: Color(0xFFF0EEF9), height: 1),
-                          itemBuilder: (_, i) =>
-                              _appRowTile(othersRows[i]),
+                          itemBuilder: (_, i) => _appRowTile(othersRows[i]),
                         ),
                       ),
                     ),
@@ -1420,6 +1436,167 @@ class _DashboardState extends State<Dashboard> {
                 ],
               ],
           ]),
+    );
+  }
+
+  // ── Date strip ────────────────────────────────────────────────────────────
+
+  Future<void> _openCalendarPicker() async {
+    final now   = DateTime.now();
+    final first = _days.first;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDay,
+      firstDate: first,
+      lastDate: now,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary:   Color(0xFF48249A),
+            onPrimary: Colors.white,
+            surface:   Colors.white,
+            onSurface: Color(0xFF1A1A2E),
+          ),
+          dialogBackgroundColor: Colors.white,
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null && mounted) {
+      _subscribeDay(picked);
+    }
+  }
+
+  List<DateTime> get _visibleDays => _days.sublist(_days.length - 7);
+
+  Widget _buildDateStrip() {
+    final visible = _visibleDays;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _monthYearLabel(_selectedDay),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF48249A),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: _openCalendarPicker,
+              child: Container(
+                width: 30, height: 30,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDE9FB),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.calendar_month_rounded,
+                  color: Color(0xFF48249A),
+                  size: 17,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: visible.map((day) {
+            final selected    = _dateKey(day) == _dateKey(_selectedDay);
+            final hasFirebase = _firebaseDaysWithData.contains(_dateKey(day));
+            final hasLocal    = _localDaysWithData.contains(_dateKey(day));
+            final isToday     = _isToday(day);
+
+            final Color ringColor = selected
+                ? const Color(0xFF48249A)
+                : (isToday || hasFirebase)
+                ? const Color(0xFF4CAF50)
+                : hasLocal
+                ? const Color(0xFF9C27B0)
+                : const Color(0xFFE0DDEA);
+
+            return Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  if (!selected) _subscribeDay(day);
+                },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: selected
+                            ? const Color(0xFF48249A)
+                            : Colors.white,
+                        border: Border.all(
+                          color: ringColor,
+                          width: selected ? 0 : 2.5,
+                        ),
+                        boxShadow: selected
+                            ? [
+                          BoxShadow(
+                            color: const Color(0xFF48249A)
+                                .withOpacity(0.25),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          )
+                        ]
+                            : null,
+                      ),
+                      child: Center(
+                        child: Text(
+                          day.day.toString(),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: selected
+                                ? Colors.white
+                                : const Color(0xFF48249A),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      _shortDay(day),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: selected
+                            ? const Color(0xFF48249A)
+                            : Colors.grey,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _isToday(_selectedDay)
+              ? _isAndroid
+              ? "Today · uploading every 30 seconds"
+              : "Today · showing cloud data"
+              : _dayLabel(_selectedDay),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 11, color: Color(0xFF000000)),
+        ),
+      ],
     );
   }
 
@@ -1463,11 +1640,9 @@ class _DashboardState extends State<Dashboard> {
         onTap: (i) => setState(() => _currentIndex = i),
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_rounded),
-              label: "My Report"),
+              icon: Icon(Icons.bar_chart_rounded), label: "My Report"),
           BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_outlined),
-              label: "Loved Ones"),
+              icon: Icon(Icons.favorite_outlined), label: "Loved Ones"),
         ],
       ),
     );
@@ -1479,7 +1654,7 @@ class _DashboardState extends State<Dashboard> {
       child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Greeting card ─────────────────────────────────────────────
+            // ── Greeting card ──────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -1532,114 +1707,16 @@ class _DashboardState extends State<Dashboard> {
             _buildOverviewCards(),
             const SizedBox(height: 20),
 
-            // ── iOS info banner ───────────────────────────────────────────
             if (!_isAndroid) _buildIosBanner(),
 
-            // ── Day selector ──────────────────────────────────────────────
-            SizedBox(
-              height: 72,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _days.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) {
-                  final day      = _days[i];
-                  final selected =
-                      _dateKey(day) == _dateKey(_selectedDay);
-                  final hasFirebase =
-                  _firebaseDaysWithData.contains(_dateKey(day));
-                  final hasLocal =
-                  _localDaysWithData.contains(_dateKey(day));
-                  final isToday = _isToday(day);
-
-                  return GestureDetector(
-                    onTap: () {
-                      if (!selected) _subscribeDay(day);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 56,
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFF48249A)
-                            : const Color(0xFFF3F0FB),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: selected
-                              ? const Color(0xFF48249A)
-                              : const Color(0xFFDDD8F0),
-                        ),
-                      ),
-                      child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              _shortDay(day),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: selected
-                                    ? Colors.white70
-                                    : Colors.grey,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              day.day.toString(),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: selected
-                                    ? Colors.white
-                                    : const Color(0xFF48249A),
-                              ),
-                            ),
-                            Container(
-                              margin: const EdgeInsets.only(top: 3),
-                              width: 5, height: 5,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: selected
-                                    ? Colors.white
-                                    : (isToday || hasFirebase)
-                                    ? const Color(0xFF4CAF50)
-                                    : hasLocal
-                                    ? const Color(0xFF9C27B0)
-                                    : !_localDaysChecked
-                                    ? Colors.grey
-                                    .withOpacity(0.4)
-                                    : Colors.grey
-                                    .withOpacity(0.25),
-                              ),
-                            ),
-                          ]),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _isToday(_selectedDay)
-                  ? _isAndroid
-                  ? "Today · uploading every 30 seconds"
-                  : "Today · showing cloud data"
-                  : _dayLabel(_selectedDay),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 11, color: Color(0xFF000000)),
-            ),
+            _buildDateStrip(),
             const SizedBox(height: 16),
 
-            // ── Permission card (Android only) ────────────────────────────
-            if (_isAndroid &&
-                _localLoaded &&
-                !_permissionGranted) ...[
+            if (_isAndroid && _localLoaded && !_permissionGranted) ...[
               _buildPermissionCard(),
               const SizedBox(height: 16),
             ],
 
-            // ── Local data banners (Android only) ─────────────────────────
             if (_isAndroid && _usingLocalData && _isToday(_selectedDay))
               _buildLocalDataBanner()
             else if (_isAndroid &&
@@ -1647,7 +1724,6 @@ class _DashboardState extends State<Dashboard> {
                 !_isToday(_selectedDay))
               _buildLocalPastBanner(),
 
-            // ── Loading / report ──────────────────────────────────────────
             if (!_reportLoaded && _permissionGranted)
               const Center(
                 child: Padding(
@@ -1657,8 +1733,8 @@ class _DashboardState extends State<Dashboard> {
                         color: Color(0xFF4CAF50), strokeWidth: 2),
                     SizedBox(height: 12),
                     Text("Loading your report…",
-                        style: TextStyle(
-                            color: Colors.grey, fontSize: 13)),
+                        style:
+                        TextStyle(color: Colors.grey, fontSize: 13)),
                   ]),
                 ),
               )
@@ -1745,12 +1821,12 @@ class _FullInsightPageState extends State<_FullInsightPage> {
   bool   _sentimentLoading = true;
   String _sentimentError   = '';
 
-  final FlutterTts _tts            = FlutterTts();
-  bool   _ttsPlaying               = false;
-  bool   _ttsPaused                = false;
-  String _selectedLanguage         = 'en-US';
+  final FlutterTts _tts        = FlutterTts();
+  bool   _ttsPlaying           = false;
+  bool   _ttsPaused            = false;
+  String _selectedLanguage     = 'en-US';
   final Map<String, String> _translationCache = {};
-  bool _translating                = false;
+  bool _translating            = false;
 
   static const Map<String, String> _languages = {
     'English':  'en-US',
@@ -1849,8 +1925,7 @@ $_aiAnalysis''';
 
     if (!mounted) return;
 
-    final isAvailable =
-    await _tts.isLanguageAvailable(_selectedLanguage);
+    final isAvailable = await _tts.isLanguageAvailable(_selectedLanguage);
     if (!isAvailable && mounted) {
       final langName = _languages.entries
           .firstWhere((e) => e.value == _selectedLanguage)
@@ -1911,8 +1986,7 @@ $_aiAnalysis''';
                           await Future.delayed(
                               const Duration(milliseconds: 200));
                           if (mounted) {
-                            setState(
-                                    () => _selectedLanguage = entry.value);
+                            setState(() => _selectedLanguage = entry.value);
                           }
                         },
                         child: AnimatedContainer(
@@ -1957,8 +2031,7 @@ $_aiAnalysis''';
                     }
                   },
                   child: Container(
-                    padding:
-                    const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
                       color: _translating
                           ? Colors.white.withOpacity(0.6)
@@ -1967,8 +2040,7 @@ $_aiAnalysis''';
                     ),
                     child: _translating
                         ? const Row(
-                        mainAxisAlignment:
-                        MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           SizedBox(
                             width: 16, height: 16,
@@ -1984,8 +2056,7 @@ $_aiAnalysis''';
                                   fontWeight: FontWeight.w700)),
                         ])
                         : Row(
-                        mainAxisAlignment:
-                        MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             _ttsPlaying
@@ -2084,16 +2155,14 @@ $_aiAnalysis''';
   }
 
   (String, Color, Color) _severityFor(int mins) => mins >= 60
-      ? ("Way Over Used", const Color(0xFFD32F2F),
-  const Color(0xFFFFCDD2))
-      : ("High Usage", const Color(0xFFE65100),
-  const Color(0xFFFFE0B2));
+      ? ("Way Over Used", const Color(0xFFD32F2F), const Color(0xFFFFCDD2))
+      : ("High Usage", const Color(0xFFE65100), const Color(0xFFFFE0B2));
 
   String _fmtMins(int mins) {
     final h = mins ~/ 60;
     final m = mins % 60;
     if (h == 0) return "${m}m";
-    return "${h}:${m.toString().padLeft(2, '0')}";
+    return "${h}h ${m.toString().padLeft(2, '0')}m";
   }
 
   String _tipForMins(int mins) => mins >= 60
@@ -2112,8 +2181,7 @@ $_aiAnalysis''';
       buf.writeln("Pickups: ${widget.pickups}");
     }
     if (widget.screenTimeStatus != null) {
-      buf.writeln(
-          "Screen time status: ${widget.screenTimeStatus}");
+      buf.writeln("Screen time status: ${widget.screenTimeStatus}");
     }
     if (widget.sleepImpactStatus != null) {
       buf.writeln("Sleep impact: ${widget.sleepImpactStatus}");
@@ -2231,10 +2299,9 @@ DATA: ${_usageSummary()}""";
         final fallback = {
           'sentiment': 'Neutral',
           'score':     50,
-          'summary':
-          'Could not analyse sentiment. Please retry.',
-          'mood': '😐',
-          'tags': ['Retry Needed'],
+          'summary':   'Could not analyse sentiment. Please retry.',
+          'mood':      '😐',
+          'tags':      ['Retry Needed'],
         };
         if (mounted) {
           setState(() {
@@ -2263,11 +2330,9 @@ DATA: ${_usageSummary()}""";
     }
   }
 
-  Widget _legendBadge(
-      String label, Color textColor, Color bgColor) =>
+  Widget _legendBadge(String label, Color textColor, Color bgColor) =>
       Container(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(20),
@@ -2276,8 +2341,8 @@ DATA: ${_usageSummary()}""";
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Container(
             width: 8, height: 8,
-            decoration: BoxDecoration(
-                color: textColor, shape: BoxShape.circle),
+            decoration:
+            BoxDecoration(color: textColor, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
           Text(label,
@@ -2337,7 +2402,7 @@ DATA: ${_usageSummary()}""";
               decoration: const BoxDecoration(
                 color: Color(0xFF48249A),
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
+                  topLeft:  Radius.circular(20),
                   topRight: Radius.circular(20),
                 ),
               ),
@@ -2398,8 +2463,7 @@ DATA: ${_usageSummary()}""";
                   ))
                   : _sentimentError.isNotEmpty
                   ? Row(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(Icons.error_outline_rounded,
                         color: Colors.redAccent, size: 18),
@@ -2413,8 +2477,7 @@ DATA: ${_usageSummary()}""";
                   : _sentiment == null
                   ? const SizedBox.shrink()
                   : Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
                       Container(
@@ -2435,10 +2498,8 @@ DATA: ${_usageSummary()}""";
                             CrossAxisAlignment.start,
                             children: [
                               Container(
-                                padding:
-                                const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: _sentimentBg(),
                                   borderRadius:
@@ -2449,8 +2510,7 @@ DATA: ${_usageSummary()}""";
                                 ),
                                 child: Text(_sentiment!.sentiment,
                                     style: TextStyle(
-                                        color:
-                                        _sentimentPrimary(),
+                                        color: _sentimentPrimary(),
                                         fontSize: 13,
                                         fontWeight:
                                         FontWeight.w800)),
@@ -2473,28 +2533,22 @@ DATA: ${_usageSummary()}""";
                             style: TextStyle(
                                 color: Colors.black,
                                 fontSize: 13,
-                                fontWeight:
-                                FontWeight.w600)),
-                        Text(
-                            "${_sentiment!.score}/100",
+                                fontWeight: FontWeight.w600)),
+                        Text("${_sentiment!.score}/100",
                             style: TextStyle(
                                 color: _sentimentBar(),
                                 fontSize: 13,
-                                fontWeight:
-                                FontWeight.w800)),
+                                fontWeight: FontWeight.w800)),
                       ],
                     ),
                     const SizedBox(height: 8),
                     ClipRRect(
-                      borderRadius:
-                      BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(6),
                       child: LinearProgressIndicator(
                         value: _sentiment!.score / 100,
                         minHeight: 10,
-                        backgroundColor:
-                        const Color(0xFFEEEEEE),
-                        valueColor:
-                        AlwaysStoppedAnimation<Color>(
+                        backgroundColor: const Color(0xFFEEEEEE),
+                        valueColor: AlwaysStoppedAnimation<Color>(
                             _sentimentBar()),
                       ),
                     ),
@@ -2508,10 +2562,8 @@ DATA: ${_usageSummary()}""";
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children:
-                      _sentiment!.tags.map((tag) {
-                        final isWarning = tag.contains(
-                            'Risk') ||
+                      children: _sentiment!.tags.map((tag) {
+                        final isWarning = tag.contains('Risk') ||
                             tag.contains('Doom') ||
                             tag.contains('Overuse') ||
                             tag.contains('Distracted') ||
@@ -2525,21 +2577,18 @@ DATA: ${_usageSummary()}""";
                             ? const Color(0xFFFFF3E0)
                             : const Color(0xFFE8F5E9);
                         return Container(
-                          padding:
-                          const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: tagBg,
                             borderRadius:
                             BorderRadius.circular(20),
                             border: Border.all(
-                                color: tagColor
-                                    .withOpacity(0.3)),
+                                color:
+                                tagColor.withOpacity(0.3)),
                           ),
                           child: Row(
-                              mainAxisSize:
-                              MainAxisSize.min,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   isWarning
@@ -2610,8 +2659,7 @@ DATA: ${_usageSummary()}""";
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.3)),
-                      Text(
-                          "Personalised insights based on your usage",
+                      Text("Personalised insights based on your usage",
                           style: TextStyle(
                               color: Colors.white60, fontSize: 11)),
                     ]),
@@ -2703,8 +2751,7 @@ DATA: ${_usageSummary()}""";
         backgroundColor: const Color(0xFF48249A),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded,
-              color: Colors.white),
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () {
             _stop();
             Navigator.of(context).pop();
@@ -2728,8 +2775,7 @@ DATA: ${_usageSummary()}""";
                 _legendBadge("High Usage", const Color(0xFFE65100),
                     const Color(0xFFFFE0B2)),
                 const SizedBox(width: 8),
-                _legendBadge("Way Over Used",
-                    const Color(0xFFD32F2F),
+                _legendBadge("Way Over Used", const Color(0xFFD32F2F),
                     const Color(0xFFFFCDD2)),
               ]),
               const SizedBox(height: 16),
@@ -2757,8 +2803,7 @@ DATA: ${_usageSummary()}""";
                       ],
                     ),
                     child: Column(
-                        crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(children: [
                             ClipRRect(
@@ -2770,35 +2815,28 @@ DATA: ${_usageSummary()}""";
                                   fit: BoxFit.cover)
                                   : Container(
                                   width: 42, height: 42,
-                                  color:
-                                  const Color(0xFFF3F0FB),
-                                  child: const Icon(
-                                      Icons.android_rounded,
-                                      color: Colors.grey,
-                                      size: 24)),
+                                  color: const Color(0xFFF3F0FB),
+                                  child: const Icon(Icons.android_rounded,
+                                      color: Colors.grey, size: 24)),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
-                                  crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(name,
                                         style: const TextStyle(
                                             color: Colors.black,
                                             fontSize: 14,
-                                            fontWeight:
-                                            FontWeight.w700),
-                                        overflow:
-                                        TextOverflow.ellipsis),
+                                            fontWeight: FontWeight.w700),
+                                        overflow: TextOverflow.ellipsis),
                                     const SizedBox(height: 2),
                                     Text(
                                         "Used ${_fmtMins(mins)} without a break",
                                         style: TextStyle(
                                             color: severity.$2,
                                             fontSize: 12,
-                                            fontWeight:
-                                            FontWeight.w500)),
+                                            fontWeight: FontWeight.w500)),
                                   ]),
                             ),
                             Container(
@@ -2806,8 +2844,7 @@ DATA: ${_usageSummary()}""";
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: severity.$2,
-                                borderRadius:
-                                BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(severity.$1,
                                   style: TextStyle(
@@ -2822,17 +2859,13 @@ DATA: ${_usageSummary()}""";
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               color: severity.$3,
-                              borderRadius:
-                              BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
-                                crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
-                                      Icons.lightbulb_outline_rounded,
-                                      color: severity.$2,
-                                      size: 16),
+                                  Icon(Icons.lightbulb_outline_rounded,
+                                      color: severity.$2, size: 16),
                                   const SizedBox(width: 8),
                                   Expanded(
                                       child: Text(_tipForMins(mins),
