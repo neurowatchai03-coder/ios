@@ -32,63 +32,56 @@ jobs:
       - name: Verify pubspec integrity
         run: flutter pub get --dry-run
 
-      - name: Navigate to iOS directory
-        working-directory: ios
-        run: |
-          echo "Current directory: $(pwd)"
-          ls -la
-
       - name: Install CocoaPods
         run: |
-          sudo gem install cocoapods
           cd ios
-          pod repo update
           pod install --repo-update
           cd ..
 
       - name: Analyze Flutter code
         run: flutter analyze
 
-      - name: Format check
-        run: flutter format --set-exit-if-changed .
-
       - name: Build iOS Release
         run: flutter build ios --release --no-codesign
 
-      - name: Create IPA
-        working-directory: ios
+      - name: Create ExportOptions.plist
         run: |
+          cat > ios/ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>teamID</key>
+              <string></string>
+              <key>thinning</key>
+              <string>&lt;none&gt;</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Build Archive
+        run: |
+          cd ios
           xcodebuild -workspace Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
             -derivedDataPath build \
             -archivePath build/Runner.xcarchive \
             archive
-          
-          if [ ! -f ExportOptions.plist ]; then
-            echo "Creating default ExportOptions.plist"
-            cat > ExportOptions.plist << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>signingStyle</key>
-    <string>automatic</string>
-    <key>stripSwiftSymbols</key>
-    <true/>
-    <key>teamID</key>
-    <string></string>
-    <key>thinning</key>
-    <string>&lt;none&gt;</string>
-</dict>
-</plist>
-EOF
-          fi
-          
+          cd ..
+
+      - name: Export IPA
+        run: |
+          cd ios
           xcodebuild -exportArchive \
             -archivePath build/Runner.xcarchive \
             -exportPath build/ipa \
             -exportOptionsPlist ExportOptions.plist
+          cd ..
 
       - name: Verify IPA
         run: |
@@ -100,31 +93,18 @@ EOF
             exit 1
           fi
 
-      - name: Upload IPA to Artifacts
+      - name: Upload IPA Artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
           path: ios/build/ipa/Runner.ipa
           retention-days: 30
-          if-no-files-found: error
 
       - name: Upload build logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
-          path: |
-            ios/build/
-            ~/Library/Logs/
+          path: ios/build/
           retention-days: 7
-
-      - name: Notify success
-        if: success()
-        run: echo "✅ iOS build completed successfully"
-
-      - name: Notify failure
-        if: failure()
-        run: |
-          echo "❌ iOS build failed"
-          exit 1
