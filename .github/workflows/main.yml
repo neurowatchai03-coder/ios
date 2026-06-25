@@ -9,16 +9,19 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    # Changed from macos-latest to explicitly use macos-15 to avoid the June 15, 2026 migration warnings
+    runs-on: macos-15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Updated from @v2 to @v2.16.0+ (or latest) which resolves the internal Node.js 20 deprecation warning
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v2.16.0 
         with:
           channel: stable
+          cache: true # Added caching to speed up your build times!
 
       - name: Get dependencies
         run: flutter pub get
@@ -26,8 +29,10 @@ jobs:
       - name: Analyze (ignore warnings/info)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      # NOTE: "|| true" forces this step to pass even if a test fails. 
+      # If your job failed at "Run tests", you might want to remove "|| true" so GitHub catches errors.
       - name: Run tests
-        run: flutter test || true
+        run: flutter test
 
       - name: Build Android APK
         run: flutter build apk --release
@@ -37,4 +42,3 @@ jobs:
 
       - name: Build iOS
         run: flutter build ios --release --no-codesign
-
